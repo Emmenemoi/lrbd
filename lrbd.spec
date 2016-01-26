@@ -14,6 +14,11 @@
 
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 
+%if 0%{?suse_version} > 1230 || 0%{?rhel_version} > 6 || 0%{?centos_version} > 6 || 0%{?fedora_version} >= 20 || 0%{?el7}%{?fc20}%{?fc21}%{?fc22}
+%bcond_without systemd
+%else
+%bcond_with    systemd
+%endif
 
 Summary: lrbd
 Name: lrbd
@@ -26,6 +31,9 @@ URL: http://bugs.opensuse.org
 Source0: lrbd-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-root
 BuildArch: noarch
+%if %{with systemd}
+BuildRequires:  pkgconfig(systemd)
+%endif
 Requires: python-netifaces
 Requires: python-rados
 Requires: python-rbd
@@ -60,7 +68,7 @@ install -m 644 man/lrbd.conf.5.gz %{buildroot}%{_mandir}/man5
 install -m 644 man/lrbd.8.gz %{buildroot}%{_mandir}/man8
 
 install -m 644 sysconfig/lrbd %{buildroot}/var/adm/fillup-templates/sysconfig.lrbd
-install -m 644 systemd/lrbd.service %{buildroot}%{_unitdir}
+install -m 644 systemd/%{name}.service %{buildroot}%{_unitdir}
 ln -sf %{_sbindir}/service %{buildroot}%_sbindir/rclrbd
 
 install -m 644 samples/acls+discovery.json  %{_samples}
@@ -98,17 +106,32 @@ install -m 644 samples/tpg+identified.json %{_samples}
 
 
 %pre
-%service_add_pre lrbd.service 
+%if 0%{?suse_version}
+%service_add_pre %{name}.service 
+%endif
+
 
 %post
-%service_add_post lrbd.service 
+%if 0%{?suse_version}
+%service_add_post %{name}.service 
 %fillup_and_insserv
+%else
+%systemd_post %{name}.service
+%endif
 
 %preun
-%service_del_preun lrbd.service 
+%if 0%{?suse_version}
+%service_del_preun %{name}.service 
+%else
+%systemd_preun %{name}.service
+%endif
 
 %postun
-%service_del_postun lrbd.service 
+%if 0%{?suse_version}
+%service_del_postun %{name}.service 
+%else
+%systemd_postun_with_restart %{name}.service
+%endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
